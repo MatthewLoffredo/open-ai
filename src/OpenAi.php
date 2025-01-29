@@ -968,6 +968,11 @@ class OpenAi
     {
         $post_fields = json_encode($opts);
 
+        // CUSTOM CODE: add api-key header if firstignite is in url for Azure endpoints
+        if (str_contains($url, 'firstignite')) {
+            $this->headers[] = "api-key: ".config('services.azure.api_key');
+        }
+
         if (array_key_exists('file', $opts) || array_key_exists('image', $opts)) {
             $this->headers[0] = $this->contentTypes["multipart/form-data"];
             $post_fields = $opts;
@@ -1023,6 +1028,11 @@ class OpenAi
     {
         if ($this->customUrl != "") {
             $url = str_replace(Url::ORIGIN, $this->customUrl, $url);
+
+            // CUSTOM CODE: make sure the custom url is correct when using Azure
+            if (str_contains($this->customUrl, 'firstignite')) {
+                $url = $this->customUrl;
+            }
         }
     }
 }
