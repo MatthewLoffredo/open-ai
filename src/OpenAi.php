@@ -3,6 +3,11 @@
 namespace Orhanerday\OpenAi;
 
 use Exception;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Laravel\Telescope\EntryType;
+use Laravel\Telescope\IncomingEntry;
+use Laravel\Telescope\Telescope;
 
 class OpenAi
 {
@@ -58,7 +63,7 @@ class OpenAi
     public function retrieveModel($model)
     {
         $model = "/$model";
-        $url = Url::fineTuneModel().$model;
+        $url = Url::fineTuneModel() . $model;
         $this->baseUrl($url);
 
         return $this->sendRequest($url, 'GET');
@@ -122,7 +127,7 @@ class OpenAi
      */
     public function image($opts)
     {
-        $url = Url::imageUrl()."/generations";
+        $url = Url::imageUrl() . "/generations";
         $this->baseUrl($url);
 
         return $this->sendRequest($url, 'POST', $opts);
@@ -134,7 +139,7 @@ class OpenAi
      */
     public function imageEdit($opts)
     {
-        $url = Url::imageUrl()."/edits";
+        $url = Url::imageUrl() . "/edits";
         $this->baseUrl($url);
 
         return $this->sendRequest($url, 'POST', $opts);
@@ -146,7 +151,7 @@ class OpenAi
      */
     public function createImageVariation($opts)
     {
-        $url = Url::imageUrl()."/variations";
+        $url = Url::imageUrl() . "/variations";
         $this->baseUrl($url);
 
         return $this->sendRequest($url, 'POST', $opts);
@@ -284,7 +289,7 @@ class OpenAi
     public function retrieveFile($file_id)
     {
         $file_id = "/$file_id";
-        $url = Url::filesUrl().$file_id;
+        $url = Url::filesUrl() . $file_id;
         $this->baseUrl($url);
 
         return $this->sendRequest($url, 'GET');
@@ -297,7 +302,7 @@ class OpenAi
     public function retrieveFileContent($file_id)
     {
         $file_id = "/$file_id/content";
-        $url = Url::filesUrl().$file_id;
+        $url = Url::filesUrl() . $file_id;
         $this->baseUrl($url);
 
         return $this->sendRequest($url, 'GET');
@@ -310,7 +315,7 @@ class OpenAi
     public function deleteFile($file_id)
     {
         $file_id = "/$file_id";
-        $url = Url::filesUrl().$file_id;
+        $url = Url::filesUrl() . $file_id;
         $this->baseUrl($url);
 
         return $this->sendRequest($url, 'DELETE');
@@ -346,7 +351,7 @@ class OpenAi
     public function retrieveFineTune($fine_tune_id)
     {
         $fine_tune_id = "/$fine_tune_id";
-        $url = Url::fineTuneUrl().$fine_tune_id;
+        $url = Url::fineTuneUrl() . $fine_tune_id;
         $this->baseUrl($url);
 
         return $this->sendRequest($url, 'GET');
@@ -359,7 +364,7 @@ class OpenAi
     public function cancelFineTune($fine_tune_id)
     {
         $fine_tune_id = "/$fine_tune_id/cancel";
-        $url = Url::fineTuneUrl().$fine_tune_id;
+        $url = Url::fineTuneUrl() . $fine_tune_id;
         $this->baseUrl($url);
 
         return $this->sendRequest($url, 'POST');
@@ -372,7 +377,7 @@ class OpenAi
     public function listFineTuneEvents($fine_tune_id)
     {
         $fine_tune_id = "/$fine_tune_id/events";
-        $url = Url::fineTuneUrl().$fine_tune_id;
+        $url = Url::fineTuneUrl() . $fine_tune_id;
         $this->baseUrl($url);
 
         return $this->sendRequest($url, 'GET');
@@ -385,7 +390,7 @@ class OpenAi
     public function deleteFineTune($fine_tune_id)
     {
         $fine_tune_id = "/$fine_tune_id";
-        $url = Url::fineTuneModel().$fine_tune_id;
+        $url = Url::fineTuneModel() . $fine_tune_id;
         $this->baseUrl($url);
 
         return $this->sendRequest($url, 'DELETE');
@@ -720,7 +725,7 @@ class OpenAi
 
             $this->stream_method = $stream;
         }
-        
+
         $this->addAssistantsBetaHeader();
         $url = Url::threadsUrl() . '/' . $threadId . '/runs';
         $this->baseUrl($url);
@@ -791,7 +796,7 @@ class OpenAi
 
             $this->stream_method = $stream;
         }
-        
+
         $this->addAssistantsBetaHeader();
         $url = Url::threadsUrl() . '/' . $threadId . '/runs/' . $runId . '/submit_tool_outputs';
         $this->baseUrl($url);
@@ -885,7 +890,7 @@ class OpenAi
     public function setProxy(string $proxy)
     {
         if ($proxy && strpos($proxy, '://') === false) {
-            $proxy = 'https://'.$proxy;
+            $proxy = 'https://' . $proxy;
         }
         $this->proxy = $proxy;
     }
@@ -939,7 +944,7 @@ class OpenAi
             $this->headers[] = "OpenAI-Organization: $org";
         }
     }
-    
+
     /**
      * @param  string  $org
      */
@@ -953,10 +958,11 @@ class OpenAi
     /**
      * @return void
      */
-    private function addAssistantsBetaHeader(){ 
-        $this->headers[] = 'OpenAI-Beta: assistants='.$this->assistantsBetaVersion;
+    private function addAssistantsBetaHeader()
+    {
+        $this->headers[] = 'OpenAI-Beta: assistants=' . $this->assistantsBetaVersion;
     }
-    
+
 
     /**
      * @param  string  $url
@@ -970,7 +976,7 @@ class OpenAi
 
         // CUSTOM CODE: add api-key header if firstignite is in url for Azure endpoints
         if (str_contains($url, 'firstignite')) {
-            $this->headers[] = "api-key: ".config('services.azure.api_key');
+            $this->headers[] = "api-key: " . config('services.azure.api_key');
         }
 
         if (array_key_exists('file', $opts) || array_key_exists('image', $opts)) {
@@ -1018,7 +1024,141 @@ class OpenAi
             throw new Exception(curl_error($curl));
         }
 
+        if (config('telescope.debug.openai_integration', false)) {
+            $this->recordTelescopeEntry($url, $method, $opts, $response, $info);
+        }
+
         return $response;
+    }
+
+    /**
+     * Record Telescope entry for client request
+     */
+    private function recordTelescopeEntry(string $url, string $method, array $opts, $response, array $info): void
+    {
+        $entry = new IncomingEntry([
+            'uri' => $url,
+            'method' => $method,
+            'headers' => $this->formatHeadersForTelescope($this->headers),
+            'payload' => $this->formatPayloadForTelescope($opts),
+            'response_status' => $info['http_code'] ?? 0,
+            'response_headers' => $this->extractResponseHeaders($info),
+            'response_body' => $this->truncateResponseBody($response),
+            'response' => $this->formatResponseForTelescope($response),
+            'duration' => isset($info['total_time']) ? (int)($info['total_time'] * 1000) : 0, // Convert to milliseconds
+            'total_time' => $info['total_time'] ?? 0,
+            'size' => $info['size_download'] ?? 0,
+        ]);
+
+        $entry->type(EntryType::CLIENT_REQUEST);
+
+        // Add user context if available
+        try {
+            if (Auth::hasResolvedGuards() && Auth::hasUser()) {
+                $entry->user(Auth::user());
+            }
+        } catch (\Exception $e) {
+            // Ignore auth errors
+        }
+
+        Telescope::recordClientRequest($entry);
+    }
+
+    /**
+     * Format headers for Telescope display
+     */
+    private function formatHeadersForTelescope(array $headers): array
+    {
+        $formatted = [];
+        foreach ($headers as $header) {
+            if (is_string($header) && strpos($header, ':') !== false) {
+                [$key, $value] = explode(':', $header, 2);
+                $formatted[trim($key)] = trim($value);
+            }
+        }
+        return $formatted;
+    }
+
+    /**
+     * Format payload for Telescope display
+     */
+    private function formatPayloadForTelescope(array $opts): array
+    {
+        // For file uploads, don't include the actual file content
+        $payload = $opts;
+        if (isset($payload['file'])) {
+            $payload['file'] = '[FILE_CONTENT_HIDDEN]';
+        }
+        if (isset($payload['image'])) {
+            $payload['image'] = '[IMAGE_CONTENT_HIDDEN]';
+        }
+        return $payload;
+    }
+
+    /**
+     * Extract response headers from cURL info
+     */
+    private function extractResponseHeaders(array $info): array
+    {
+        return [
+            'content-type' => $info['content_type'] ?? null,
+            'http-code' => $info['http_code'] ?? null,
+            'total-time' => $info['total_time'] ?? null,
+            'namelookup-time' => $info['namelookup_time'] ?? null,
+            'connect-time' => $info['connect_time'] ?? null,
+            'pretransfer-time' => $info['pretransfer_time'] ?? null,
+            'size-download' => $info['size_download'] ?? null,
+            'speed-download' => $info['speed_download'] ?? null,
+        ];
+    }
+
+    /**
+     * Format response for Telescope display
+     */
+    private function formatResponseForTelescope($response): array
+    {
+        if (!is_string($response)) {
+            return ['error' => 'Invalid response format'];
+        }
+
+        // Try to decode JSON response
+        $decoded = json_decode($response, true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            return $decoded;
+        }
+
+        // If not JSON, return as raw text (truncated)
+        return ['raw_response' => $this->truncateResponseBody($response)];
+    }
+
+    /**
+     * Truncate response body for Telescope storage
+     */
+    private function truncateResponseBody($response): string
+    {
+        if (!is_string($response)) {
+            return '';
+        }
+
+        // Limit response body to 64KB to prevent database storage issues
+        $maxLength = 65536;
+        if (strlen($response) > $maxLength) {
+            return substr($response, 0, $maxLength) . '... [TRUNCATED]';
+        }
+
+        return $response;
+    }
+
+    /**
+     * Generate family hash for grouping related requests
+     */
+    private function generateFamilyHash(string $url, string $method): string
+    {
+        // Parse URL to get path without query parameters for grouping
+        $parsedUrl = parse_url($url);
+        $pathForHash = ($parsedUrl['host'] ?? '') . ($parsedUrl['path'] ?? '');
+
+        return hash('sha256', $method . ':' . $pathForHash);
     }
 
     /**
